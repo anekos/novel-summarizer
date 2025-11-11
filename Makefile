@@ -1,3 +1,3 @@
 .PHONY: test
 test:
-	uv run pytest
+	uv run pre-commit run --all-files
