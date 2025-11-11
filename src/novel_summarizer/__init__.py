@@ -70,7 +70,7 @@ def command_summarize(
 
     if dest is not None:
         dest.mkdir(parents=True, exist_ok=True)
-    log_path = dest / "run.log" if dest is not None else None
+    log_path = dest / "log.txt" if dest is not None else None
 
     summary_usage = Cost()
     overview_usage = Cost()
