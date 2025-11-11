@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Page(BaseModel):
@@ -10,3 +10,42 @@ class PageChunk(BaseModel):
     text: str
     start_page: int
     end_page: int
+
+
+class Character(BaseModel):
+    """登場人物"""
+
+    name: str = Field(description="登場人物の名前（フルネームまたは呼称）")
+    features: list[str] = Field(
+        description="外見、服装、性格、立場、職業などの特徴。些細な描写も含める"
+    )
+    relationships: list[str] = Field(
+        description="他の登場人物との関係性。家族関係、友人関係、上下関係など"
+    )
+    events: list[str] = Field(
+        description="この人物に関連する出来事。行動、発言、体験したことなど"
+    )
+
+
+class NovelSummary(BaseModel):
+    """小説要約"""
+
+    characters: list[Character] = Field(
+        description="登場人物の一覧。些細な登場でも漏らさず全て含める"
+    )
+    plot: list[str] = Field(description="あらすじ。物語の出来事を時系列順に並べる")
+
+
+class NovelOverview(BaseModel):
+    """作品全体の概要"""
+
+    title: str = Field(description="作品のタイトル")
+    genre: list[str] = Field(
+        description="ジャンル（例: 純文学、恋愛小説、ミステリーなど）"
+    )
+    themes: list[str] = Field(
+        description="作品の主要なテーマ（例: 孤独、友情、死生観など）"
+    )
+    summary: str = Field(description="作品全体の簡潔な要約（200-300文字程度）")
+    main_characters: list[str] = Field(description="主要登場人物の名前のリスト")
+    atmosphere: str = Field(description="作品全体の雰囲気や文体の特徴")
