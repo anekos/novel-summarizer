@@ -21,16 +21,10 @@ pricing = {
 class Cost(BaseModel):
     input_tokens: int = Field(default=0)
     output_tokens: int = Field(default=0)
-    input_characters: int = Field(default=0)
-    output_characters: int = Field(default=0)
 
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
-
-    @property
-    def total_characters(self) -> int:
-        return self.input_characters + self.output_characters
 
     def price(self, model: str) -> float:
         (input_price, output_price) = pricing[model]
@@ -42,15 +36,7 @@ class Cost(BaseModel):
         return Cost(
             input_tokens=self.input_tokens + other.input_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
-            input_characters=self.input_characters + other.input_characters,
-            output_characters=self.output_characters + other.output_characters,
         )
-
-    def tokens_per_character(self) -> float | None:
-        total_characters = self.total_characters
-        if total_characters == 0:
-            return None
-        return self.total_tokens / total_characters
 
 
 def cost_from_usage(usage: Any) -> Cost:
@@ -79,6 +65,4 @@ def cost_from_usage(usage: Any) -> Cost:
     return Cost(
         input_tokens=_extract("input_tokens", "prompt_tokens"),
         output_tokens=_extract("output_tokens", "completion_tokens"),
-        input_characters=_extract("input_characters"),
-        output_characters=_extract("output_characters"),
     )

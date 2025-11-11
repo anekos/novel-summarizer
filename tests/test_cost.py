@@ -7,8 +7,6 @@ def test_cost_from_usage_handles_object_payload() -> None:
     usage = SimpleNamespace(
         input_tokens=1_000,
         output_tokens=500,
-        input_characters=2_000,
-        output_characters=1_000,
     )
 
     cost = cost_from_usage(usage)
@@ -36,16 +34,3 @@ def test_cost_addition_sums_fields() -> None:
     assert total.input_tokens == 12
     assert total.output_tokens == 8
     assert total.total_tokens == 20
-
-
-def test_tokens_per_character_handles_zero_division() -> None:
-    empty_cost = Cost()
-    assert empty_cost.tokens_per_character() is None
-
-    cost = Cost(
-        input_tokens=100,
-        output_tokens=50,
-        input_characters=75,
-        output_characters=25,
-    )
-    assert cost.tokens_per_character() == 150 / 100

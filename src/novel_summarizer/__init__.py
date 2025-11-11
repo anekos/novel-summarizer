@@ -184,8 +184,6 @@ def _log_usage_detail(
     price: float | None,
     cost: Cost,
 ) -> None:
-    ratio = cost.tokens_per_character()
-    ratio_text = f"{ratio:.4f} tokens/char" if ratio is not None else "tokens/char: n/a"
     if price is None:
         logger.log(f"{label}: price unknown (model {model})")
     else:
@@ -194,11 +192,6 @@ def _log_usage_detail(
         f"    tokens total {cost.total_tokens} "
         f"(input {cost.input_tokens}, output {cost.output_tokens})"
     )
-    logger.log(
-        f"    chars  total {cost.total_characters} "
-        f"(input {cost.input_characters}, output {cost.output_characters})"
-    )
-    logger.log(f"    {ratio_text}")
 
 
 def _price_for_model(cost: Cost, model: str) -> float | None:
