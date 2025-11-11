@@ -15,7 +15,7 @@ class PageChunk(BaseModel):
 class Character(BaseModel):
     """登場人物"""
 
-    name: str = Field(description="登場人物の名前（フルネームまたは呼称）")
+    name: str = Field(description="登場人物の名前(フルネームまたは呼称)")
     features: list[str] = Field(
         description="外見、服装、性格、立場、職業などの特徴。些細な描写も含める"
     )
@@ -27,6 +27,13 @@ class Character(BaseModel):
     )
 
 
+class Setting(BaseModel):
+    """舞台設定"""
+
+    time_period: str = Field(description="時代背景(例: 明治時代、現代、2024年など)")
+    locations: list[str] = Field(description="物語の舞台となる場所")
+
+
 class NovelSummary(BaseModel):
     """小説要約"""
 
@@ -34,6 +41,16 @@ class NovelSummary(BaseModel):
         description="登場人物の一覧。些細な登場でも漏らさず全て含める"
     )
     plot: list[str] = Field(description="あらすじ。物語の出来事を時系列順に並べる")
+    settings: Setting = Field(description="時代設定と場所。物語の舞台となる時代や地域")
+    key_scenes: list[str] = Field(
+        description="物語の転換点となる重要なシーン。クライマックスや印象的な場面"
+    )
+    symbols_motifs: list[str] = Field(
+        description="繰り返し登場する象徴的な要素やモチーフ(小道具、色、言葉など)"
+    )
+    unresolved_mysteries: list[str] = Field(
+        description="まだ明かされていない謎や伏線。読み進める中で解決されたら削除される"
+    )
 
 
 class NovelOverview(BaseModel):
@@ -41,11 +58,11 @@ class NovelOverview(BaseModel):
 
     title: str = Field(description="作品のタイトル")
     genre: list[str] = Field(
-        description="ジャンル（例: 純文学、恋愛小説、ミステリーなど）"
+        description="ジャンル(例: 純文学、恋愛小説、ミステリーなど)"
     )
     themes: list[str] = Field(
-        description="作品の主要なテーマ（例: 孤独、友情、死生観など）"
+        description="作品の主要なテーマ(例: 孤独、友情、死生観など)"
     )
-    summary: str = Field(description="作品全体の簡潔な要約（200-300文字程度）")
+    summary: str = Field(description="作品全体の簡潔な要約 (200-300文字程度)")
     main_characters: list[str] = Field(description="主要登場人物の名前のリスト")
     atmosphere: str = Field(description="作品全体の雰囲気や文体の特徴")
