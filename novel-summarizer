@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -euC
+# set -o pipefail
+
+dir="$(dirname "$(readlink -f "$0")")"
+
+# shellcheck disable=1091
+# [ -f "${dir}/.beethovenv" ] && source "${dir}/.beethovenv"
+
+exec uv run \
+  --directory "${dir}" \
+  novel-summarizer \
+  "$@"
