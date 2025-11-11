@@ -3,6 +3,8 @@ from pathlib import Path
 
 import click
 
+from novel_summarizer.logger import WithFileLogger
+
 TypePath = click.types.Path(path_type=Path)
 
 
@@ -42,42 +44,46 @@ def command_summarize(
     pages = pagenize(text, re.compile(page_header))
     page_chunks = chunked(pages, chunk_size=chunk_size, overlap=overlap)
 
-    print(f"=== Summarization for {title} ===")
-
-    for chunk in [*page_chunks[0:2], *page_chunks[-2:]]:
-        print(f"# Pages {chunk.start_page} to {chunk.end_page} ####################")
-        print(chunk.text[0:100])
-        print("...")
-        print(chunk.text[-100:])
-
-    print("\n\n=== Summary ===\n")
-
     if dest is not None:
         dest.mkdir(parents=True, exist_ok=True)
+    log_path = dest / "log.txt" if dest is not None else None
 
-    final_summary: None | NovelSummary = None
+    with WithFileLogger(log_path) as logger:
+        logger.log(f"=== Summarization for {title} ===")
 
-    for chunk, summary in summarize(page_chunks):
-        md = summary_to_markdown(summary)
-        final_summary = summary
-        print(
-            f"# Pages {chunk.start_page} to {chunk.end_page} Summary ####################"
-        )
-        print(md)
-        if dest is not None:
-            filename = f"{chunk.start_page:04d}-{chunk.end_page:04d}.md"
+        for chunk in [*page_chunks[0:2], *page_chunks[-2:]]:
+            logger.log(
+                f"# Pages {chunk.start_page} to {chunk.end_page} ####################"
+            )
+            logger.log(chunk.text[0:100])
+            logger.log("...")
+            logger.log(chunk.text[-100:])
+
+        logger.log("\n\n=== Summary ===\n")
+
+        final_summary: None | NovelSummary = None
+
+        for chunk, summary in summarize(page_chunks):
             md = summary_to_markdown(summary)
-            (dest / filename).write_text(md, encoding="utf-8")
+            final_summary = summary
+            logger.log(
+                f"# Pages {chunk.start_page} to {chunk.end_page} Summary ####################"
+            )
+            logger.log(md)
+            if dest is not None:
+                filename = f"{chunk.start_page:04d}-{chunk.end_page:04d}.md"
+                md = summary_to_markdown(summary)
+                (dest / filename).write_text(md, encoding="utf-8")
 
-    if final_summary is None:
-        return
+        if final_summary is None:
+            return
 
-    overview = create_overview(final_summary, title=title)
-    md = overview_to_markdown(overview)
-    print("# Overview ####################")
-    print(md)
-    if dest is not None:
-        (dest / "overview.md").write_text(md, encoding="utf-8")
+        overview = create_overview(final_summary, title=title)
+        md = overview_to_markdown(overview)
+        logger.log("# Overview ####################")
+        logger.log(md)
+        if dest is not None:
+            (dest / "overview.md").write_text(md, encoding="utf-8")
 
 
 if __name__ == "__main__":
