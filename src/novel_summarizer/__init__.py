@@ -22,6 +22,47 @@ def main(ctx: click.Context) -> None:
     pass
 
 
+@main.command(name="cost")
+@click.option(
+    "--model",
+    type=str,
+    required=True,
+    help="OpenAI model ID to price against.",
+)
+@click.option(
+    "--input-tokens",
+    type=int,
+    required=False,
+    default=0,
+    show_default=True,
+    help="Number of prompt/input tokens.",
+)
+@click.option(
+    "--output-tokens",
+    type=int,
+    required=False,
+    default=0,
+    show_default=True,
+    help="Number of completion/output tokens.",
+)
+def command_cost(model: str, input_tokens: int, output_tokens: int) -> None:
+    """Calculate cost for a single API call."""
+    if input_tokens < 0 or output_tokens < 0:
+        raise click.ClickException("Token counts must be non-negative integers.")
+
+    usage = Cost(input_tokens=input_tokens, output_tokens=output_tokens)
+
+    try:
+        price = usage.price(model)
+    except KeyError as exc:
+        raise click.ClickException(f"Unknown model '{model}'.") from exc
+
+    click.echo(f"Model: {model}")
+    click.echo(f"Input tokens: {input_tokens}")
+    click.echo(f"Output tokens: {output_tokens}")
+    click.echo(f"Total price: ${price:.4f}")
+
+
 @main.command(name="summarize")
 @click.argument("source-text", type=TypePath, required=True)
 @click.argument("page-header", type=str, required=True)
