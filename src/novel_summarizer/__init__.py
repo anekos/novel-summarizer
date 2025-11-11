@@ -4,6 +4,13 @@ from pathlib import Path
 import click
 
 from novel_summarizer.logger import WithFileLogger
+from novel_summarizer.summarizer import (
+    OVERVIEW_MODEL,
+    SUMMARY_MODEL,
+    create_overview,
+    summarize,
+)
+from novel_summarizer.summarizer.cost import Cost
 
 TypePath = click.types.Path(path_type=Path)
 
@@ -23,12 +30,30 @@ def main(ctx: click.Context) -> None:
     "--chunk-size", type=int, required=False, help="Page chunks size", default=50
 )
 @click.option("--overlap", type=int, required=False, help="Overlap pages", default=5)
+@click.option(
+    "--summary-model",
+    type=str,
+    required=False,
+    default=SUMMARY_MODEL,
+    show_default=True,
+    help="OpenAI model ID used for individual chunk summaries.",
+)
+@click.option(
+    "--overview-model",
+    type=str,
+    required=False,
+    default=OVERVIEW_MODEL,
+    show_default=True,
+    help="OpenAI model ID used for the final overview.",
+)
 def command_summarize(
     source_text: Path,
     page_header: str,
     chunk_size: int,
     overlap: int,
     dest: Path | None,
+    summary_model: str,
+    overview_model: str,
 ) -> None:
     from novel_summarizer.chunker import chunked
     from novel_summarizer.markdown_writer import (
@@ -36,7 +61,6 @@ def command_summarize(
         summary_to_markdown,
     )
     from novel_summarizer.pager import pagenize
-    from novel_summarizer.summarizer import create_overview, summarize
     from novel_summarizer.types import NovelSummary
 
     text = source_text.read_text(encoding="utf-8")
@@ -46,7 +70,10 @@ def command_summarize(
 
     if dest is not None:
         dest.mkdir(parents=True, exist_ok=True)
-    log_path = dest / "log.txt" if dest is not None else None
+    log_path = dest / "run.log" if dest is not None else None
+
+    summary_usage = Cost()
+    overview_usage = Cost()
 
     with WithFileLogger(log_path) as logger:
         logger.log(f"=== Summarization for {title} ===")
@@ -63,9 +90,10 @@ def command_summarize(
 
         final_summary: None | NovelSummary = None
 
-        for chunk, summary in summarize(page_chunks):
+        for chunk, summary, cost in summarize(page_chunks, model=summary_model):
             md = summary_to_markdown(summary)
             final_summary = summary
+            summary_usage = summary_usage + cost
             logger.log(
                 f"# Pages {chunk.start_page} to {chunk.end_page} Summary ####################"
             )
@@ -76,15 +104,109 @@ def command_summarize(
                 (dest / filename).write_text(md, encoding="utf-8")
 
         if final_summary is None:
+            _log_api_costs(
+                logger,
+                summary_usage,
+                overview_usage,
+                summary_model=summary_model,
+                overview_model=overview_model,
+            )
             return
 
-        overview = create_overview(final_summary, title=title)
+        overview, overview_cost = create_overview(
+            final_summary, title=title, model=overview_model
+        )
         md = overview_to_markdown(overview)
+        overview_usage = overview_usage + overview_cost
         logger.log("# Overview ####################")
         logger.log(md)
         if dest is not None:
             (dest / "overview.md").write_text(md, encoding="utf-8")
 
+        _log_api_costs(
+            logger,
+            summary_usage,
+            overview_usage,
+            summary_model=summary_model,
+            overview_model=overview_model,
+        )
+
 
 if __name__ == "__main__":
     main()
+
+
+def _log_api_costs(
+    logger: WithFileLogger,
+    summary_cost: Cost,
+    overview_cost: Cost,
+    *,
+    summary_model: str,
+    overview_model: str,
+) -> None:
+    summary_price = _price_for_model(summary_cost, summary_model)
+    overview_price = _price_for_model(overview_cost, overview_model)
+    total_usage = summary_cost + overview_cost
+
+    logger.log("=== API Cost Summary ===")
+    total_price = _known_total([summary_price, overview_price])
+    missing_models = [
+        model
+        for price, model in (
+            (summary_price, summary_model),
+            (overview_price, overview_model),
+        )
+        if price is None
+    ]
+    if missing_models:
+        logger.log(
+            f"Total: at least ${total_price:.4f} "
+            f"(missing pricing for: {', '.join(missing_models)})"
+        )
+    else:
+        logger.log(f"Total: ${total_price:.4f}")
+
+    _log_usage_detail(logger, "Summaries", summary_model, summary_price, summary_cost)
+    _log_usage_detail(logger, "Overview", overview_model, overview_price, overview_cost)
+    _log_usage_detail(
+        logger,
+        "Combined",
+        "aggregate",
+        total_price if not missing_models else None,
+        total_usage,
+    )
+
+
+def _log_usage_detail(
+    logger: WithFileLogger,
+    label: str,
+    model: str,
+    price: float | None,
+    cost: Cost,
+) -> None:
+    ratio = cost.tokens_per_character()
+    ratio_text = f"{ratio:.4f} tokens/char" if ratio is not None else "tokens/char: n/a"
+    if price is None:
+        logger.log(f"{label}: price unknown (model {model})")
+    else:
+        logger.log(f"{label}: ${price:.4f} (model {model})")
+    logger.log(
+        f"    tokens total {cost.total_tokens} "
+        f"(input {cost.input_tokens}, output {cost.output_tokens})"
+    )
+    logger.log(
+        f"    chars  total {cost.total_characters} "
+        f"(input {cost.input_characters}, output {cost.output_characters})"
+    )
+    logger.log(f"    {ratio_text}")
+
+
+def _price_for_model(cost: Cost, model: str) -> float | None:
+    try:
+        return cost.price(model)
+    except KeyError:
+        return None
+
+
+def _known_total(prices: list[float | None]) -> float:
+    return sum(price for price in prices if price is not None)

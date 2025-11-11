@@ -54,6 +54,7 @@ class WithFileLogger:
         if self._file is not None:
             written = self._file.write(data)
         self._stdout.write(data)
+        self.flush()
         return written
 
     def flush(self) -> None:

@@ -4,23 +4,34 @@ from collections.abc import Iterator
 from openai import OpenAI
 
 import novel_summarizer.prompts as P
+from novel_summarizer.summarizer.cost import Cost, cost_from_usage
 from novel_summarizer.types import NovelOverview, NovelSummary, PageChunk
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
 
+SUMMARY_MODEL = "gpt-4o-mini"
+OVERVIEW_MODEL = "gpt-4o-2024-08-06"
 
-def summarize(chunks: list[PageChunk]) -> Iterator[tuple[PageChunk, NovelSummary]]:
+
+def summarize(
+    chunks: list[PageChunk],
+    *,
+    model: str = SUMMARY_MODEL,
+) -> Iterator[tuple[PageChunk, NovelSummary, Cost]]:
     previous_summary: NovelSummary | None = None
 
     for chunk in chunks:
-        summary = summarize_page(chunks[0].text, previous_summary)
-        yield chunk, summary
+        summary, cost = summarize_page(chunk.text, previous_summary, model=model)
+        yield chunk, summary, cost
         previous_summary = summary
 
 
 def summarize_page(
-    page_content: str, previous_summary: NovelSummary | None = None
-) -> NovelSummary:
+    page_content: str,
+    previous_summary: NovelSummary | None = None,
+    *,
+    model: str = SUMMARY_MODEL,
+) -> tuple[NovelSummary, Cost]:
     """
     ページを要約する（前回の要約があれば統合する）
 
@@ -45,7 +56,7 @@ def summarize_page(
 {page_content}"""
 
     completion = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {"role": "system", "content": P.DoSummarizeSystem},
             {"role": "user", "content": user_message},
@@ -53,12 +64,16 @@ def summarize_page(
         response_format=NovelSummary,
     )
 
-    return completion.choices[0].message.parsed  # type: ignore
+    cost = cost_from_usage(completion.usage)
+    return completion.choices[0].message.parsed, cost  # type: ignore
 
 
 def create_overview(
-    final_summary: NovelSummary, title: str | None = None
-) -> NovelOverview:
+    final_summary: NovelSummary,
+    title: str | None = None,
+    *,
+    model: str = OVERVIEW_MODEL,
+) -> tuple[NovelOverview, Cost]:
     """
     最終的な要約から作品全体の概要を生成する
 
@@ -79,7 +94,7 @@ def create_overview(
     user_message += P.CreateOverview.format(summary=summary)
 
     completion = client.beta.chat.completions.parse(
-        model="gpt-4o-2024-08-06",
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -90,4 +105,5 @@ def create_overview(
         response_format=NovelOverview,
     )
 
-    return completion.choices[0].message.parsed  # type: ignore
+    cost = cost_from_usage(completion.usage)
+    return completion.choices[0].message.parsed, cost  # type: ignore
