@@ -10,7 +10,7 @@ from novel_summarizer.types import NovelOverview, NovelSummary, PageChunk
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
 
 SUMMARY_MODEL = "gpt-4o-mini"
-OVERVIEW_MODEL = "gpt-4o-2024-08-06"
+OVERVIEW_MODEL = "gpt-4o-mini"
 
 
 def summarize(
