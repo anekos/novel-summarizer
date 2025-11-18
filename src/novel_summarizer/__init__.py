@@ -144,6 +144,10 @@ def command_summarize(
                 md = summary_to_markdown(summary)
                 (dest / filename).write_text(md, encoding="utf-8")
 
+                json_filename = f"{chunk.start_page:04d}-{chunk.end_page:04d}.json"
+                json_payload = summary.model_dump_json(indent=2, ensure_ascii=False)
+                (dest / json_filename).write_text(json_payload, encoding="utf-8")
+
         if final_summary is None:
             _log_api_costs(
                 logger,
@@ -163,6 +167,8 @@ def command_summarize(
         logger.log(md)
         if dest is not None:
             (dest / "overview.md").write_text(md, encoding="utf-8")
+            overview_json = overview.model_dump_json(indent=2, ensure_ascii=False)
+            (dest / "overview.json").write_text(overview_json, encoding="utf-8")
 
         _log_api_costs(
             logger,
