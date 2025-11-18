@@ -1,4 +1,5 @@
 import re
+import time
 from pathlib import Path
 
 import click
@@ -104,6 +105,8 @@ def command_summarize(
     from novel_summarizer.pager import pagenize
     from novel_summarizer.types import NovelSummary
 
+    start_time = time.perf_counter()
+
     text = source_text.read_text(encoding="utf-8")
     title = source_text.stem
     pages = pagenize(text, re.compile(page_header))
@@ -149,6 +152,7 @@ def command_summarize(
                 (dest / json_filename).write_text(json_payload, encoding="utf-8")
 
         if final_summary is None:
+            _log_total_time(logger, start_time)
             _log_api_costs(
                 logger,
                 summary_usage,
@@ -170,6 +174,7 @@ def command_summarize(
             overview_json = overview.model_dump_json(indent=2, ensure_ascii=False)
             (dest / "overview.json").write_text(overview_json, encoding="utf-8")
 
+        _log_total_time(logger, start_time)
         _log_api_costs(
             logger,
             summary_usage,
@@ -250,3 +255,8 @@ def _price_for_model(cost: Cost, model: str) -> float | None:
 
 def _known_total(prices: list[float | None]) -> float:
     return sum(price for price in prices if price is not None)
+
+
+def _log_total_time(logger: WithFileLogger, start_time: float) -> None:
+    elapsed_minutes = (time.perf_counter() - start_time) / 60
+    logger.log(f"=== Total Time === {elapsed_minutes:.2f}分")
