@@ -21,8 +21,8 @@ def test_cost_command_calculates_total_price() -> None:
 
     assert result.exit_code == 0
     assert "Model: gpt-4o-mini" in result.output
-    assert "Input tokens: 1000" in result.output
-    assert "Output tokens: 1000" in result.output
+    assert "Input tokens: 1,000" in result.output
+    assert "Output tokens: 1,000" in result.output
     expected = Cost(input_tokens=1000, output_tokens=1000).price("gpt-4o-mini")
     assert f"Total price: ${expected:.4f}" in result.output
 

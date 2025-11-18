@@ -58,8 +58,8 @@ def command_cost(model: str, input_tokens: int, output_tokens: int) -> None:
         raise click.ClickException(f"Unknown model '{model}'.") from exc
 
     click.echo(f"Model: {model}")
-    click.echo(f"Input tokens: {input_tokens}")
-    click.echo(f"Output tokens: {output_tokens}")
+    click.echo(f"Input tokens: {input_tokens:,}")
+    click.echo(f"Output tokens: {output_tokens:,}")
     click.echo(f"Total price: ${price:.4f}")
 
 
@@ -230,8 +230,8 @@ def _log_usage_detail(
     else:
         logger.log(f"{label}: ${price:.4f} (model {model})")
     logger.log(
-        f"    tokens total {cost.total_tokens} "
-        f"(input {cost.input_tokens}, output {cost.output_tokens})"
+        f"    tokens total {cost.total_tokens:,} "
+        f"(input {cost.input_tokens:,}, output {cost.output_tokens:,})"
     )
 
 
