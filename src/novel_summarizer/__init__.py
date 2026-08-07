@@ -6,6 +6,7 @@ import click
 
 from novel_summarizer.logger import WithFileLogger
 from novel_summarizer.summarizer import (
+    EXTRACT_MODEL,
     OVERVIEW_MODEL,
     SUMMARY_MODEL,
     create_overview,
@@ -88,6 +89,14 @@ def command_cost(model: str, input_tokens: int, output_tokens: int) -> None:
     show_default=True,
     help="OpenAI model ID used for the final overview.",
 )
+@click.option(
+    "--extract-model",
+    type=str,
+    required=False,
+    default=EXTRACT_MODEL,
+    show_default=True,
+    help="OpenAI model ID used for character name extraction.",
+)
 def command_summarize(
     source_text: Path,
     page_header: str,
@@ -96,6 +105,7 @@ def command_summarize(
     dest: Path | None,
     summary_model: str,
     overview_model: str,
+    extract_model: str,
 ) -> None:
     from novel_summarizer.chunker import chunked
     from novel_summarizer.markdown_writer import (
@@ -118,6 +128,7 @@ def command_summarize(
 
     summary_usage = Cost()
     overview_usage = Cost()
+    extract_usage = Cost()
 
     with WithFileLogger(log_path) as logger:
         logger.log(f"=== Summarization for {title} ===")
@@ -134,10 +145,13 @@ def command_summarize(
 
         final_summary: None | NovelSummary = None
 
-        for chunk, summary, cost in summarize(page_chunks, model=summary_model):
+        for chunk, summary, cost, extract_cost in summarize(
+            page_chunks, model=summary_model, extract_model=extract_model
+        ):
             md = summary_to_markdown(summary)
             final_summary = summary
             summary_usage = summary_usage + cost
+            extract_usage = extract_usage + extract_cost
             logger.log(
                 f"# Pages {chunk.start_page} to {chunk.end_page} Summary ####################"
             )
@@ -157,8 +171,10 @@ def command_summarize(
                 logger,
                 summary_usage,
                 overview_usage,
+                extract_usage,
                 summary_model=summary_model,
                 overview_model=overview_model,
+                extract_model=extract_model,
             )
             return
 
@@ -179,8 +195,10 @@ def command_summarize(
             logger,
             summary_usage,
             overview_usage,
+            extract_usage,
             summary_model=summary_model,
             overview_model=overview_model,
+            extract_model=extract_model,
         )
 
 
@@ -192,21 +210,25 @@ def _log_api_costs(
     logger: WithFileLogger,
     summary_cost: Cost,
     overview_cost: Cost,
+    extract_cost: Cost,
     *,
     summary_model: str,
     overview_model: str,
+    extract_model: str,
 ) -> None:
     summary_price = _price_for_model(summary_cost, summary_model)
     overview_price = _price_for_model(overview_cost, overview_model)
-    total_usage = summary_cost + overview_cost
+    extract_price = _price_for_model(extract_cost, extract_model)
+    total_usage = summary_cost + overview_cost + extract_cost
 
     logger.log("=== API Cost Summary ===")
-    total_price = _known_total([summary_price, overview_price])
+    total_price = _known_total([summary_price, overview_price, extract_price])
     missing_models = [
         model
         for price, model in (
             (summary_price, summary_model),
             (overview_price, overview_model),
+            (extract_price, extract_model),
         )
         if price is None
     ]
@@ -218,6 +240,7 @@ def _log_api_costs(
     else:
         logger.log(f"Total: ${total_price:.4f}")
 
+    _log_usage_detail(logger, "Extraction", extract_model, extract_price, extract_cost)
     _log_usage_detail(logger, "Summaries", summary_model, summary_price, summary_cost)
     _log_usage_detail(logger, "Overview", overview_model, overview_price, overview_cost)
     _log_usage_detail(
