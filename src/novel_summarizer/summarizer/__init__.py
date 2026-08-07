@@ -5,31 +5,70 @@ from openai import OpenAI
 
 import novel_summarizer.prompts as P
 from novel_summarizer.summarizer.cost import Cost, cost_from_usage
-from novel_summarizer.types import NovelOverview, NovelSummary, PageChunk
+from novel_summarizer.summarizer.messages import build_summarize_user_message
+from novel_summarizer.types import (
+    CharacterNames,
+    NovelOverview,
+    NovelSummary,
+    PageChunk,
+)
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
 
 SUMMARY_MODEL = "gpt-4o-mini"
 OVERVIEW_MODEL = "gpt-4o-mini"
+EXTRACT_MODEL = "gpt-5-nano"
 
 
 def summarize(
     chunks: list[PageChunk],
     *,
     model: str = SUMMARY_MODEL,
-) -> Iterator[tuple[PageChunk, NovelSummary, Cost]]:
+    extract_model: str = EXTRACT_MODEL,
+) -> Iterator[tuple[PageChunk, NovelSummary, Cost, Cost]]:
     previous_summary: NovelSummary | None = None
 
     for chunk in chunks:
-        summary, cost = summarize_page(chunk.text, previous_summary, model=model)
-        yield chunk, summary, cost
+        names, extract_cost = extract_character_names(chunk.text, model=extract_model)
+        summary, summary_cost = summarize_page(
+            chunk.text,
+            previous_summary,
+            character_names=names,
+            model=model,
+        )
+        yield chunk, summary, summary_cost, extract_cost
         previous_summary = summary
+
+
+def extract_character_names(
+    page_content: str,
+    *,
+    model: str = EXTRACT_MODEL,
+) -> tuple[list[str], Cost]:
+    """チャンク本文に登場・言及される人物名を列挙する"""
+    completion = client.beta.chat.completions.parse(
+        model=model,
+        messages=[
+            {"role": "system", "content": P.ExtractCharacterNamesSystem},
+            {
+                "role": "user",
+                "content": P.ExtractCharacterNames.format(content=page_content),
+            },
+        ],
+        response_format=CharacterNames,
+    )
+
+    cost = cost_from_usage(completion.usage)
+    parsed = completion.choices[0].message.parsed
+    names = parsed.names if parsed is not None else []
+    return names, cost
 
 
 def summarize_page(
     page_content: str,
     previous_summary: NovelSummary | None = None,
     *,
+    character_names: list[str] | None = None,
     model: str = SUMMARY_MODEL,
 ) -> tuple[NovelSummary, Cost]:
     """
@@ -38,22 +77,14 @@ def summarize_page(
     Args:
         page_content: 新しいページの内容
         previous_summary: 前回までの要約（初回は None）
+        character_names: このページに登場する人物名（チェックリストとして注入）
 
     Returns:
         更新された要約
     """
-    if previous_summary is None:
-        user_message = f"以下の内容を要約してください:\n\n{page_content}"
-    else:
-        user_message = f"""以下は前回までの要約です:
-
-{previous_summary.model_dump_json(indent=2, ensure_ascii=False)}
-
----
-
-以下の新しい内容を読んで、上記の要約を更新してください:
-
-{page_content}"""
+    user_message = build_summarize_user_message(
+        page_content, previous_summary, character_names
+    )
 
     completion = client.beta.chat.completions.parse(
         model=model,

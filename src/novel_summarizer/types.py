@@ -27,6 +27,17 @@ class Character(BaseModel):
     )
 
 
+class CharacterNames(BaseModel):
+    """チャンクに登場する人物名の一覧"""
+
+    names: list[str] = Field(
+        description=(
+            "本文に登場・言及される人物の名前。端役や一度きりの言及も含める。"
+            "名前が不明な人物は呼称(例: 駅員、老婆)で表す"
+        )
+    )
+
+
 class Setting(BaseModel):
     """舞台設定"""
 
