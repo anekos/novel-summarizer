@@ -64,6 +64,36 @@ class NovelSummary(BaseModel):
     )
 
 
+class NovelSummaryUpdate(BaseModel):
+    """1チャンク分の要約更新(登場人物は差分のみ)"""
+
+    new_characters: list[Character] = Field(
+        description=(
+            "このチャンクで初めて登場した人物。"
+            "既知の人物一覧にある名前は含めない。些細な登場でも漏らさず含める"
+        )
+    )
+    character_updates: list[Character] = Field(
+        description=(
+            "既知の人物についてこのチャンクで新たに判明した情報。"
+            "features/relationships/events には新規判明分のみを入れる"
+        )
+    )
+    plot: list[str] = Field(
+        description="あらすじ。既存と新規を統合し、物語の出来事を時系列順に並べる"
+    )
+    settings: Setting = Field(description="時代設定と場所。物語の舞台となる時代や地域")
+    key_scenes: list[str] = Field(
+        description="物語の転換点となる重要なシーン。クライマックスや印象的な場面"
+    )
+    symbols_motifs: list[str] = Field(
+        description="繰り返し登場する象徴的な要素やモチーフ(小道具、色、言葉など)"
+    )
+    unresolved_mysteries: list[str] = Field(
+        description="まだ明かされていない謎や伏線。読み進める中で解決されたら削除される"
+    )
+
+
 class NovelOverview(BaseModel):
     """作品全体の概要"""
 
