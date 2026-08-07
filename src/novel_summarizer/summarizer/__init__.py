@@ -7,11 +7,13 @@ from openai import Omit, OpenAI, omit
 
 import novel_summarizer.prompts as P
 from novel_summarizer.summarizer.cost import Cost, cost_from_usage
+from novel_summarizer.summarizer.merge import apply_update
 from novel_summarizer.summarizer.messages import build_summarize_user_message
 from novel_summarizer.types import (
     CharacterNames,
     NovelOverview,
     NovelSummary,
+    NovelSummaryUpdate,
     PageChunk,
 )
 
@@ -113,11 +115,14 @@ def summarize_page(
             {"role": "system", "content": P.DoSummarizeSystem},
             {"role": "user", "content": user_message},
         ],
-        response_format=NovelSummary,
+        response_format=NovelSummaryUpdate,
     )
 
     cost = cost_from_usage(completion.usage)
-    return completion.choices[0].message.parsed, cost  # type: ignore
+    update = completion.choices[0].message.parsed
+    if update is None:
+        raise RuntimeError("Structured output parse returned no content")
+    return apply_update(previous_summary, update), cost
 
 
 def create_overview(
