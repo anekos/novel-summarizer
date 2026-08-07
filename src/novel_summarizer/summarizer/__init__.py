@@ -1,7 +1,8 @@
 import os
 from collections.abc import Iterator
+from typing import Literal
 
-from openai import OpenAI
+from openai import Omit, OpenAI, omit
 
 import novel_summarizer.prompts as P
 from novel_summarizer.summarizer.cost import Cost, cost_from_usage
@@ -46,8 +47,13 @@ def extract_character_names(
     model: str = EXTRACT_MODEL,
 ) -> tuple[list[str], Cost]:
     """チャンク本文に登場・言及される人物名を列挙する"""
+    # reasoning_effort は非 reasoning モデルに渡すと API エラーになる
+    effort: Literal["minimal"] | Omit = (
+        "minimal" if model.startswith(("gpt-5", "o1", "o3", "o4")) else omit
+    )
     completion = client.beta.chat.completions.parse(
         model=model,
+        reasoning_effort=effort,
         messages=[
             {"role": "system", "content": P.ExtractCharacterNamesSystem},
             {
