@@ -12,9 +12,14 @@ def build_summarize_user_message(
         message = f"以下の内容を要約してください:\n\n{page_content}"
     else:
         summary_json = previous_summary.model_dump_json(indent=2, ensure_ascii=False)
+        known_names = "\n".join(f"- {c.name}" for c in previous_summary.characters)
         message = f"""以下は前回までの要約です:
 
 {summary_json}
+
+---
+
+{P.KnownCharacters.format(names=known_names)}
 
 ---
 

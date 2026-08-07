@@ -36,12 +36,26 @@ def test_message_includes_previous_summary() -> None:
     assert "新しい本文" in message
 
 
+def test_message_lists_known_characters() -> None:
+    message = build_summarize_user_message("新しい本文", _summary())
+
+    assert "既知の人物一覧" in message
+    assert "- 太郎" in message
+
+
+def test_first_chunk_has_no_known_characters_section() -> None:
+    message = build_summarize_user_message("本文")
+
+    assert "既知の人物一覧" not in message
+
+
 def test_message_appends_character_checklist() -> None:
     message = build_summarize_user_message("本文", None, ["太郎", "駅員"])
 
     assert "- 太郎" in message
     assert "- 駅員" in message
-    assert "必ず characters に含めて" in message
+    assert "new_characters" in message
+    assert "character_updates" in message
 
 
 def test_empty_or_none_names_omit_checklist() -> None:
