@@ -1,5 +1,5 @@
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
 
@@ -28,11 +28,18 @@ def summarize(
     *,
     model: str = SUMMARY_MODEL,
     extract_model: str = EXTRACT_MODEL,
+    on_extract_start: Callable[[PageChunk], None] | None = None,
+    on_extract_done: Callable[[PageChunk, list[str]], None] | None = None,
 ) -> Iterator[tuple[PageChunk, NovelSummary, Cost, Cost, list[str]]]:
     previous_summary: NovelSummary | None = None
 
     def extract(chunk: PageChunk) -> tuple[list[str], Cost]:
-        return extract_character_names(chunk.text, model=extract_model)
+        if on_extract_start is not None:
+            on_extract_start(chunk)
+        names, cost = extract_character_names(chunk.text, model=extract_model)
+        if on_extract_done is not None:
+            on_extract_done(chunk, names)
+        return names, cost
 
     # 列挙は前回要約に依存しないため、要約ループと並行して先行実行できる
     with ThreadPoolExecutor(max_workers=EXTRACT_CONCURRENCY) as executor:

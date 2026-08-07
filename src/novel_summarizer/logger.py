@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from pathlib import Path
 from types import TracebackType
 from typing import IO, Any, TextIO
@@ -21,6 +22,7 @@ class WithFileLogger:
         self._encoding = encoding
         self._file: IO[str] | None = None
         self._stdout: TextIO | None = None
+        self._lock = threading.Lock()
 
     def __enter__(self) -> WithFileLogger:
         if self._path is not None:
@@ -50,11 +52,13 @@ class WithFileLogger:
         if self._stdout is None:
             raise RuntimeError("WithFileLogger is not active")
 
-        written = len(data)
-        if self._file is not None:
-            written = self._file.write(data)
-        self._stdout.write(data)
-        self.flush()
+        # 列挙スレッドと要約ループが並行して書き込むため、行単位の原子性を保証する
+        with self._lock:
+            written = len(data)
+            if self._file is not None:
+                written = self._file.write(data)
+            self._stdout.write(data)
+            self.flush()
         return written
 
     def flush(self) -> None:

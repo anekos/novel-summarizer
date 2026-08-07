@@ -113,7 +113,7 @@ def command_summarize(
         summary_to_markdown,
     )
     from novel_summarizer.pager import pagenize
-    from novel_summarizer.types import NovelSummary
+    from novel_summarizer.types import NovelSummary, PageChunk
 
     start_time = time.perf_counter()
 
@@ -145,8 +145,23 @@ def command_summarize(
 
         final_summary: None | NovelSummary = None
 
+        def on_extract_start(chunk: PageChunk) -> None:
+            logger.log(
+                f"[extract] Pages {chunk.start_page} to {chunk.end_page}: started"
+            )
+
+        def on_extract_done(chunk: PageChunk, names: list[str]) -> None:
+            logger.log(
+                f"[extract] Pages {chunk.start_page} to {chunk.end_page}: "
+                f"done ({len(names)} characters)"
+            )
+
         for chunk, summary, cost, extract_cost, extracted_names in summarize(
-            page_chunks, model=summary_model, extract_model=extract_model
+            page_chunks,
+            model=summary_model,
+            extract_model=extract_model,
+            on_extract_start=on_extract_start,
+            on_extract_done=on_extract_done,
         ):
             md = summary_to_markdown(summary)
             final_summary = summary
