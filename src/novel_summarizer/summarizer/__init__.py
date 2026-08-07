@@ -1,5 +1,6 @@
 import os
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
 
 from openai import Omit, OpenAI, omit
@@ -19,6 +20,7 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
 SUMMARY_MODEL = "gpt-4o-mini"
 OVERVIEW_MODEL = "gpt-4o-mini"
 EXTRACT_MODEL = "gpt-5-nano"
+EXTRACT_CONCURRENCY = 4
 
 
 def summarize(
@@ -29,16 +31,22 @@ def summarize(
 ) -> Iterator[tuple[PageChunk, NovelSummary, Cost, Cost, list[str]]]:
     previous_summary: NovelSummary | None = None
 
-    for chunk in chunks:
-        names, extract_cost = extract_character_names(chunk.text, model=extract_model)
-        summary, summary_cost = summarize_page(
-            chunk.text,
-            previous_summary,
-            character_names=names,
-            model=model,
-        )
-        yield chunk, summary, summary_cost, extract_cost, names
-        previous_summary = summary
+    def extract(chunk: PageChunk) -> tuple[list[str], Cost]:
+        return extract_character_names(chunk.text, model=extract_model)
+
+    # 列挙は前回要約に依存しないため、要約ループと並行して先行実行できる
+    with ThreadPoolExecutor(max_workers=EXTRACT_CONCURRENCY) as executor:
+        for chunk, (names, extract_cost) in zip(
+            chunks, executor.map(extract, chunks), strict=True
+        ):
+            summary, summary_cost = summarize_page(
+                chunk.text,
+                previous_summary,
+                character_names=names,
+                model=model,
+            )
+            yield chunk, summary, summary_cost, extract_cost, names
+            previous_summary = summary
 
 
 def extract_character_names(
