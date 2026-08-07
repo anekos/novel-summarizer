@@ -25,7 +25,7 @@ def summarize(
     *,
     model: str = SUMMARY_MODEL,
     extract_model: str = EXTRACT_MODEL,
-) -> Iterator[tuple[PageChunk, NovelSummary, Cost, Cost]]:
+) -> Iterator[tuple[PageChunk, NovelSummary, Cost, Cost, list[str]]]:
     previous_summary: NovelSummary | None = None
 
     for chunk in chunks:
@@ -36,7 +36,7 @@ def summarize(
             character_names=names,
             model=model,
         )
-        yield chunk, summary, summary_cost, extract_cost
+        yield chunk, summary, summary_cost, extract_cost, names
         previous_summary = summary
 
 

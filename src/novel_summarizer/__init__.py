@@ -145,7 +145,7 @@ def command_summarize(
 
         final_summary: None | NovelSummary = None
 
-        for chunk, summary, cost, extract_cost in summarize(
+        for chunk, summary, cost, extract_cost, extracted_names in summarize(
             page_chunks, model=summary_model, extract_model=extract_model
         ):
             md = summary_to_markdown(summary)
@@ -154,6 +154,10 @@ def command_summarize(
             extract_usage = extract_usage + extract_cost
             logger.log(
                 f"# Pages {chunk.start_page} to {chunk.end_page} Summary ####################"
+            )
+            logger.log(
+                f"Extracted characters ({len(extracted_names)}): "
+                + ", ".join(extracted_names)
             )
             logger.log(md)
             if dest is not None:
