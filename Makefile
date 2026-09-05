@@ -8,8 +8,16 @@ check:
 test: check
 	uv run pytest
 
+.PHONY: build-info
+build-info:
+	printf '{"commit": "%s", "dirty": %s, "built_at": "%s"}\n' \
+		"$$(git rev-parse HEAD)" \
+		"$$([ -n "$$(git status --porcelain --untracked-files=no)" ] && echo true || echo false)" \
+		"$$(date -Iseconds)" \
+		> src/novel_summarizer/build_info.json
+
 .PHONY: install
-install:
+install: build-info
 	uv tool install --force --reinstall .
 
 .PHONY: setup

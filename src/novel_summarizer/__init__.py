@@ -13,11 +13,13 @@ from novel_summarizer.summarizer import (
     summarize,
 )
 from novel_summarizer.summarizer.cost import Cost
+from novel_summarizer.version import version_string
 
 TypePath = click.types.Path(path_type=Path)
 
 
 @click.group(context_settings={"show_default": True})
+@click.version_option(version=version_string(), message="%(version)s")
 @click.pass_context
 def main(ctx: click.Context) -> None:
     # ctx.obj = App()
@@ -131,6 +133,7 @@ def command_summarize(
     extract_usage = Cost()
 
     with WithFileLogger(log_path) as logger:
+        logger.log(version_string())
         logger.log(f"=== Summarization for {title} ===")
 
         for chunk in [*page_chunks[0:2], *page_chunks[-2:]]:
