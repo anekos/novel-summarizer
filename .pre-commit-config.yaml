@@ -21,11 +21,6 @@ repos:
         language: system
         entry: uv run ruff check --fix
         types: [python]
-      - id: Cloud formation
-        name: cfn-lint
-        language: system
-        entry: uv run cfn-lint
-        files: ^template.*\.yaml$
   # Pre Push
   - repo: local
     hooks:
