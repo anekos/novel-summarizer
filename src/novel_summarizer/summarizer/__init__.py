@@ -1,5 +1,6 @@
 import os
 from collections.abc import Iterator
+from functools import cache
 
 from openai import OpenAI
 
@@ -7,7 +8,11 @@ import novel_summarizer.prompts as P
 from novel_summarizer.summarizer.cost import Cost, cost_from_usage
 from novel_summarizer.types import NovelOverview, NovelSummary, PageChunk
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
+
+@cache
+def get_client() -> OpenAI:
+    return OpenAI(api_key=os.environ.get("OPENAI_API_KEY_FOR_NOVEL_SUMMARIZER"))
+
 
 SUMMARY_MODEL = "gpt-4o-mini"
 OVERVIEW_MODEL = "gpt-4o-mini"
@@ -55,7 +60,7 @@ def summarize_page(
 
 {page_content}"""
 
-    completion = client.beta.chat.completions.parse(
+    completion = get_client().beta.chat.completions.parse(
         model=model,
         messages=[
             {"role": "system", "content": P.DoSummarizeSystem},
@@ -93,7 +98,7 @@ def create_overview(
     summary = final_summary.model_dump_json(indent=2, ensure_ascii=False)
     user_message += P.CreateOverview.format(summary=summary)
 
-    completion = client.beta.chat.completions.parse(
+    completion = get_client().beta.chat.completions.parse(
         model=model,
         messages=[
             {
