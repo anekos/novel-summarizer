@@ -16,6 +16,10 @@ class Character(BaseModel):
     """登場人物"""
 
     name: str = Field(description="登場人物の名前(フルネームまたは呼称)")
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="作中で使われる愛称(ニックネーム)や別名。あだ名、通称、旧姓、偽名、肩書きによる呼ばれ方など",
+    )
     features: list[str] = Field(
         description="外見、服装、性格、立場、職業などの特徴。些細な描写も含める"
     )

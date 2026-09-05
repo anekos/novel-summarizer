@@ -17,6 +17,11 @@ def summary_to_markdown(summary: NovelSummary) -> str:
     for char in summary.characters:
         lines.append(f"- {char.name}")
 
+        if char.aliases:
+            lines.append("    - 愛称・別名")
+            for alias in char.aliases:
+                lines.append(f"        - {alias}")
+
         if char.features:
             lines.append("    - 特徴")
             for feature in char.features:
